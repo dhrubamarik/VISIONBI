@@ -12,35 +12,35 @@ Frontend/dist/
 __pycache__/
 *.pyc
 *.pyo
-Backend/__pycache__/
-Backend/api/__pycache__/
-Backend/api/services/__pycache__/
 Backend/backend/__pycache__/
+Backend/backend/api/__pycache__/
+Backend/backend/api/services/__pycache__/
+Backend/backend/backend/__pycache__/
 
 # ══════════════════════════════════════
 # ENVIRONMENT / SECRETS
 # ══════════════════════════════════════
 .env
 *.env
-Backend/.env
+Backend/backend/.env
 
 # ══════════════════════════════════════
 # DATABASE
 # ══════════════════════════════════════
 *.sqlite3
-Backend/db.sqlite3
+Backend/backend/db.sqlite3
 
 # ══════════════════════════════════════
 # MEDIA / UPLOADS
 # ══════════════════════════════════════
-Backend/media/
-Backend/media/user_files/
+Backend/backend/media/
+Backend/backend/media/user_files/
 
 # ══════════════════════════════════════
 # VIRTUAL ENVIRONMENT
 # ══════════════════════════════════════
 venv/
-Backend/venv/
+Backend/backend/venv/
 env/
 .venv/
 
