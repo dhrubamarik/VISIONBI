@@ -1,0 +1,13 @@
+region,category,revenue,quantity,month
+North,Electronics,1200,10,January
+South,Clothing,800,15,January
+East,Electronics,1500,8,January
+West,Furniture,900,5,January
+North,Clothing,700,12,February
+South,Electronics,1100,9,February
+East,Furniture,1300,6,February
+West,Clothing,600,14,February
+North,Electronics,1600,11,March
+South,Furniture,1000,7,March
+East,Clothing,900,13,March
+West,Electronics,1400,10,March

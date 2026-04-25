@@ -1,0 +1,9 @@
+date,region,category,revenue,quantity
+2025-01-15,North,Electronics,1200,10
+2025-01-20,South,Clothing,800,20
+2025-02-10,East,Electronics,1500,12
+2025-02-18,West,Clothing,700,15
+2025-03-05,North,Electronics,2000,18
+2025-03-22,South,Clothing,900,25
+2025-04-11,East,Electronics,1800,14
+2025-04-25,West,Clothing,650,10
