@@ -8,7 +8,6 @@
 [![Django](https://img.shields.io/badge/Django-5.x-092e20?style=flat-square&logo=django)](https://djangoproject.com/)
 [![Groq](https://img.shields.io/badge/Groq-Llama%203.3%2070B-f55036?style=flat-square)](https://groq.com/)
 [![JWT](https://img.shields.io/badge/Auth-JWT-black?style=flat-square&logo=jsonwebtokens)](https://jwt.io/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
 **Ask questions about your data in plain English. Get instant charts.**
 
