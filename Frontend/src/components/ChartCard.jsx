@@ -8,7 +8,8 @@ import {
   AiOutlineBarChart,
   AiOutlineLineChart,
   AiOutlinePieChart,
-  AiOutlineFund
+  AiOutlineFund,
+  AiOutlineClose,
 } from "react-icons/ai";
 
 /* ── Luxury palette ── */
@@ -29,8 +30,10 @@ const ColoredBar = (props) => {
           <stop offset="100%" stopColor={color} stopOpacity={0.45} />
         </linearGradient>
       </defs>
-      <rect x={x} y={y} width={width} height={height}
-        fill={`url(#bar-grad-${index})`} rx={4} ry={4} />
+      <rect
+        x={x} y={y} width={width} height={height}
+        fill={`url(#bar-grad-${index})`} rx={4} ry={4}
+      />
     </g>
   );
 };
@@ -48,9 +51,18 @@ const LuxTooltip = ({ active, payload, label }) => {
       fontSize: "0.8rem", color: "#f0ece0",
       boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
     }}>
-      {label && <p style={{ color: "#8a8580", letterSpacing: "0.1em", textTransform: "uppercase", fontSize: "0.7rem", marginBottom: 4 }}>{label}</p>}
+      {label && (
+        <p style={{
+          color: "#8a8580", letterSpacing: "0.1em",
+          textTransform: "uppercase", fontSize: "0.7rem", marginBottom: 4,
+        }}>
+          {label}
+        </p>
+      )}
       {payload.map((p, i) => (
-        <p key={i} style={{ margin: 0, color }}>{p.name}: <strong>{p.value}</strong></p>
+        <p key={i} style={{ margin: 0, color }}>
+          {p.name}: <strong>{p.value}</strong>
+        </p>
       ))}
     </div>
   );
@@ -63,20 +75,26 @@ const PieLabel = ({ cx, cy, midAngle, outerRadius, name, percent, index }) => {
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
   return (
-    <text x={x} y={y} fill={COLORS[index % COLORS.length]}
-      textAnchor={x > cx ? "start" : "end"} dominantBaseline="central"
-      style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, letterSpacing: "0.04em" }}>
+    <text
+      x={x} y={y}
+      fill={COLORS[index % COLORS.length]}
+      textAnchor={x > cx ? "start" : "end"}
+      dominantBaseline="central"
+      style={{
+        fontFamily: "'DM Sans', sans-serif",
+        fontSize: 11, letterSpacing: "0.04em",
+      }}
+    >
       {name}: {(percent * 100).toFixed(0)}%
     </text>
   );
 };
 
-/* ── Metric Card ── */
+/* ── Metric Display ── */
 const MetricDisplay = ({ chart }) => {
   const item = chart.data?.[0];
   const raw  = item?.value ?? item?.name ?? "—";
 
-  /* format: if numeric add commas, prefix $ if title hints at revenue/sales */
   const isRevenue = /revenue|sales|profit|amount|total/i.test(chart.title);
   const isNumeric = !isNaN(parseFloat(raw));
   const formatted = isNumeric
@@ -93,15 +111,13 @@ const MetricDisplay = ({ chart }) => {
       {/* outer glow ring */}
       <div style={{
         position: "absolute",
-        width: 180, height: 180,
-        borderRadius: "50%",
+        width: 180, height: 180, borderRadius: "50%",
         border: "1px solid rgba(201,168,76,0.15)",
         boxShadow: "0 0 60px rgba(201,168,76,0.08)",
       }} />
       <div style={{
         position: "absolute",
-        width: 140, height: 140,
-        borderRadius: "50%",
+        width: 140, height: 140, borderRadius: "50%",
         border: "1px solid rgba(201,168,76,0.25)",
       }} />
 
@@ -109,13 +125,10 @@ const MetricDisplay = ({ chart }) => {
       <div style={{
         fontFamily: "'Cormorant Garamond', serif",
         fontSize: "clamp(2.2rem, 4vw, 3.2rem)",
-        fontWeight: 600,
-        color: "#c9a84c",
-        letterSpacing: "0.04em",
-        lineHeight: 1,
+        fontWeight: 600, color: "#c9a84c",
+        letterSpacing: "0.04em", lineHeight: 1,
         textShadow: "0 0 40px rgba(201,168,76,0.4)",
-        zIndex: 1,
-        textAlign: "center",
+        zIndex: 1, textAlign: "center",
       }}>
         {formatted}
       </div>
@@ -123,17 +136,14 @@ const MetricDisplay = ({ chart }) => {
       {/* label */}
       {item?.name && item.name !== raw && (
         <div style={{
-          fontSize: "0.7rem",
-          letterSpacing: "0.22em",
-          textTransform: "uppercase",
-          color: "#8a8580",
-          zIndex: 1,
+          fontSize: "0.7rem", letterSpacing: "0.22em",
+          textTransform: "uppercase", color: "#8a8580", zIndex: 1,
         }}>
           {item.name}
         </div>
       )}
 
-      {/* animated gold underline */}
+      {/* gold underline */}
       <div style={{
         width: 60, height: 1,
         background: "linear-gradient(90deg, transparent, #c9a84c, transparent)",
@@ -151,49 +161,132 @@ const MetricDisplay = ({ chart }) => {
   );
 };
 
-const ChartCard = ({ chart }) => {
+/* ══════════════════════════════════════════
+   CHART CARD
+══════════════════════════════════════════ */
+const ChartCard = ({ chart, index, onDelete }) => {
   return (
     <div className="body card dashboard-card glass-card h-100">
       <div className="card-body p-4">
 
         {/* Header */}
         <div className="d-flex align-items-center mb-3">
+
+          {/* ✅ Fixed - all types use chart.type */}
           <span className="me-2 text-secondary">
             {chart.type === "bar"    && <AiOutlineBarChart  size={20} />}
             {chart.type === "line"   && <AiOutlineLineChart size={20} />}
             {chart.type === "pie"    && <AiOutlinePieChart  size={20} />}
             {chart.type === "metric" && <AiOutlineFund      size={20} />}
           </span>
-          <h5 className="mb-0 fw-semibold text-capitalize text-dark">
+
+          {/* Title */}
+          <h5 className="mb-0 fw-semibold text-capitalize text-dark flex-grow-1">
             {chart.title}
           </h5>
+
+          {/* Delete button */}
+          <button
+            onClick={() => onDelete(index)}
+            style={{
+              background: "rgba(239,68,68,0.1)",
+              border: "1px solid rgba(239,68,68,0.3)",
+              borderRadius: 6, width: 28, height: 28,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", color: "#ef4444",
+              fontSize: "0.85rem", transition: "all 0.2s", flexShrink: 0,
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = "rgba(239,68,68,0.25)";
+              e.currentTarget.style.borderColor = "rgba(239,68,68,0.6)";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "rgba(239,68,68,0.1)";
+              e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)";
+            }}
+          >
+            <AiOutlineClose />
+          </button>
         </div>
+
+        {/* CSV filename */}
+        {chart.filename && (
+          <div style={{
+            fontSize: "0.65rem", letterSpacing: "0.15em",
+            color: "#8a8580", textTransform: "uppercase",
+            marginBottom: "0.5rem",
+            display: "flex", alignItems: "center", gap: "0.3rem",
+          }}>
+            <span style={{ color: "#c9a84c" }}>📄</span>
+            {chart.filename}
+          </div>
+        )}
 
         <hr className="my-3" />
 
-        {/* Chart / Metric */}
-        <div style={{ width: "100%", height: "320px", minHeight: "320px" }}>
+        {/* ✅ Fix 2 - added minWidth: 0 */}
+        <div style={{
+          width: "100%",
+          height: "320px",
+          minHeight: "320px",
+          minWidth: 0,       // ✅ fixes recharts width(-1) warning
+        }}>
 
-          {/* ── METRIC ── */}
-          {chart.type === "metric" && <MetricDisplay chart={chart} />}
+          {/* METRIC */}
+          {chart.type === "metric" && (
+            <MetricDisplay chart={chart} />
+          )}
 
-          {/* ── BAR ── */}
+          {/* BAR */}
           {chart.type === "bar" && (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chart.data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(201,168,76,0.08)" />
-                <XAxis dataKey="name" tick={{ fill: "#8a8580", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#8a8580", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<LuxTooltip />} cursor={{ fill: "rgba(201,168,76,0.06)" }} />
-                <Legend wrapperStyle={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#8a8580" }} />
-                <Bar dataKey="value" shape={<ColoredBar />} animationDuration={1200} radius={[6,6,0,0]}>
-                  {chart.data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+              <BarChart
+                data={chart.data}
+                margin={{ bottom: 20 }}  // ✅ extra space for rotated labels
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(201,168,76,0.08)"
+                />
+                {/* ✅ Fix 3 - rotated labels so names dont get cut */}
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: "#8a8580", fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  angle={-35}
+                  textAnchor="end"
+                  interval={0}
+                  height={60}
+                />
+                <YAxis
+                  tick={{ fill: "#8a8580", fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  content={<LuxTooltip />}
+                  cursor={{ fill: "rgba(201,168,76,0.06)" }}
+                />
+                <Legend wrapperStyle={{
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: 12, color: "#8a8580",
+                }} />
+                <Bar
+                  dataKey="value"
+                  shape={<ColoredBar />}
+                  animationDuration={1200}
+                  radius={[6, 6, 0, 0]}
+                >
+                  {chart.data.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}
 
-          {/* ── LINE ── */}
+          {/* LINE */}
           {chart.type === "line" && (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chart.data}>
@@ -204,14 +297,35 @@ const ChartCard = ({ chart }) => {
                     <stop offset="100%" stopColor="#4ea8a0" />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(201,168,76,0.08)" />
-                <XAxis dataKey="name" tick={{ fill: "#8a8580", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#8a8580", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<LuxTooltip />} cursor={{ stroke: "rgba(201,168,76,0.2)" }} />
-                <Legend wrapperStyle={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#8a8580" }} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(201,168,76,0.08)"
+                />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: "#8a8580", fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval={0}   // ✅ show all labels on line too
+                />
+                <YAxis
+                  tick={{ fill: "#8a8580", fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  content={<LuxTooltip />}
+                  cursor={{ stroke: "rgba(201,168,76,0.2)" }}
+                />
+                <Legend wrapperStyle={{
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontSize: 12, color: "#8a8580",
+                }} />
                 <Line
-                  type="monotone" dataKey="value"
-                  stroke="url(#line-grad)" strokeWidth={3}
+                  type="monotone"
+                  dataKey="value"
+                  stroke="url(#line-grad)"
+                  strokeWidth={3}
                   dot={{ fill: "#c9a84c", stroke: "#0a0a0f", strokeWidth: 2, r: 5 }}
                   activeDot={{ fill: "#e8c97a", r: 7, stroke: "#0a0a0f", strokeWidth: 2 }}
                   animationDuration={1200}
@@ -220,22 +334,28 @@ const ChartCard = ({ chart }) => {
             </ResponsiveContainer>
           )}
 
-          {/* ── PIE ── */}
+          {/* PIE */}
           {chart.type === "pie" && (
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={chart.data} dataKey="value"
+                  data={chart.data}
+                  dataKey="value"
                   cx="50%" cy="50%"
                   outerRadius={95} innerRadius={38}
                   paddingAngle={3}
-                  isAnimationActive animationDuration={1200}
+                  isAnimationActive
+                  animationDuration={1200}
                   labelLine={{ stroke: "rgba(201,168,76,0.3)", strokeWidth: 1 }}
                   label={<PieLabel />}
                 >
                   {chart.data.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]}
-                      stroke="rgba(10,10,15,0.6)" strokeWidth={2} />
+                    <Cell
+                      key={i}
+                      fill={COLORS[i % COLORS.length]}
+                      stroke="rgba(10,10,15,0.6)"
+                      strokeWidth={2}
+                    />
                   ))}
                 </Pie>
                 <Tooltip content={<LuxTooltip />} />

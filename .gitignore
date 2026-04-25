@@ -1,6 +1,65 @@
+# ══════════════════════════════════════
+# NODE / FRONTEND
+# ══════════════════════════════════════
 node_modules/
-Backend/node_modules/
 Frontend/node_modules/
-.env
-uploads/
 dist/
+Frontend/dist/
+
+# ══════════════════════════════════════
+# PYTHON / BACKEND
+# ══════════════════════════════════════
+__pycache__/
+*.pyc
+*.pyo
+Backend/__pycache__/
+Backend/api/__pycache__/
+Backend/api/services/__pycache__/
+Backend/backend/__pycache__/
+
+# ══════════════════════════════════════
+# ENVIRONMENT / SECRETS
+# ══════════════════════════════════════
+.env
+*.env
+Backend/.env
+
+# ══════════════════════════════════════
+# DATABASE
+# ══════════════════════════════════════
+*.sqlite3
+Backend/db.sqlite3
+
+# ══════════════════════════════════════
+# MEDIA / UPLOADS
+# ══════════════════════════════════════
+Backend/media/
+Backend/media/user_files/
+
+# ══════════════════════════════════════
+# VIRTUAL ENVIRONMENT
+# ══════════════════════════════════════
+venv/
+Backend/venv/
+env/
+.venv/
+
+# ══════════════════════════════════════
+# IDE
+# ══════════════════════════════════════
+.vscode/
+.idea/
+*.swp
+
+# ══════════════════════════════════════
+# OS
+# ══════════════════════════════════════
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ══════════════════════════════════════
+# LOGS
+# ══════════════════════════════════════
+*.log
+npm-debug.log*

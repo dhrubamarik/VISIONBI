@@ -1,6 +1,6 @@
 import ChartCard from "./ChartCard";
 
-const Dashboard = ({ charts }) => {
+const Dashboard = ({ charts, onDeleteChart }) => {
   return (
     <div className=" container mt-5">
 
@@ -8,7 +8,9 @@ const Dashboard = ({ charts }) => {
 
         {charts.map((chart, index) => (
           <div key={index} className="col-lg-6 col-xl-6">
-            <ChartCard chart={chart} />
+            <ChartCard chart={chart} 
+            index={index}
+            onDelete={onDeleteChart} />
           </div>
         ))}
 

@@ -1,181 +1,145 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AiOutlineSlack,
   AiOutlineHome,
-  AiOutlineBarChart,
-  AiOutlineAppstore,
   AiOutlinePlus,
   AiOutlineUnorderedList,
   AiOutlineUpload,
   AiOutlineFileText,
-  AiOutlineEdit,
   AiOutlineClose,
   AiOutlineUser,
   AiOutlineLogout,
 } from "react-icons/ai";
 
-/* ── Manual Upload Form Modal ── */
-const ManualForm = ({ onClose }) => {
-  const fields = ["Product / Category", "Period (e.g. Jan 2024)", "Value", "Region", "Notes"];
-  return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 9998,
-      background: "rgba(0,0,0,0.75)",
-      backdropFilter: "blur(8px)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-    }} onClick={onClose}>
-      <div style={{
-        background: "#16161f",
-        border: "1px solid rgba(201,168,76,0.25)",
-        borderRadius: 12,
-        padding: "2rem 2.5rem",
-        width: "min(480px, 92vw)",
-        boxShadow: "0 32px 80px rgba(0,0,0,0.7), 0 0 40px rgba(201,168,76,0.08)",
-        position: "relative",
-      }} onClick={e => e.stopPropagation()}>
+/* ══════════════════════════════════════════
+   CSV UPLOAD MODAL
+══════════════════════════════════════════ */
+const CsvModal = ({ onClose, onUploadSuccess }) => {
+  const [dragging, setDragging] = useState(false);
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const inputRef = useRef();
 
-        {/* top gold line */}
+  const handleUpload = async () => {
+    if (!file) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("Please login first");
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setError("");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("http://127.0.0.1:8000/api/upload/", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (res.status === 401) {
+        setError("Session expired - please login again");
+        localStorage.removeItem("token");
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data.file_id) {
+        onUploadSuccess(data.file_id, data.filename);
+      } else {
+        setError(data.error || "Upload failed");
+      }
+    } catch (err) {
+      setError("Server error - is Django running?");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    const f = e.dataTransfer.files[0];
+    if (f) setFile(f);
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0, zIndex: 9998,
+        background: "rgba(0,0,0,0.75)",
+        backdropFilter: "blur(8px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: "#16161f",
+          border: "1px solid rgba(201,168,76,0.25)",
+          borderRadius: 12,
+          padding: "2rem 2.5rem",
+          width: "min(440px, 92vw)",
+          boxShadow: "0 32px 80px rgba(0,0,0,0.7), 0 0 40px rgba(201,168,76,0.08)",
+          position: "relative",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* gold top line */}
         <div style={{
           position: "absolute", top: 0, left: "10%", right: "10%", height: 1,
           background: "linear-gradient(90deg,transparent,#c9a84c,transparent)",
         }} />
 
         {/* header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.6rem" }}>
+        <div style={{
+          display: "flex", alignItems: "center",
+          justifyContent: "space-between", marginBottom: "1.6rem",
+        }}>
           <div>
             <div style={{
               fontFamily: "'Cormorant Garamond', serif",
               fontSize: "1.4rem", fontWeight: 600,
               letterSpacing: "0.08em", color: "#f0ece0",
               textTransform: "uppercase",
-            }}>Manual Entry</div>
-            <div style={{ fontSize: "0.65rem", letterSpacing: "0.2em", color: "#8a8580", textTransform: "uppercase", marginTop: 2 }}>
-              Add a new data record
+            }}>
+              Upload CSV
             </div>
-          </div>
-          <button onClick={onClose} style={{
-            background: "rgba(255,255,255,0.05)", border: "1px solid rgba(201,168,76,0.2)",
-            borderRadius: 6, width: 32, height: 32,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#8a8580", cursor: "pointer", fontSize: "1rem",
-            transition: "all 0.2s",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.color = "#f0ece0"; e.currentTarget.style.borderColor = "rgba(201,168,76,0.5)"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "#8a8580"; e.currentTarget.style.borderColor = "rgba(201,168,76,0.2)"; }}
-          ><AiOutlineClose /></button>
-        </div>
-
-        {/* form fields */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {fields.map(label => (
-            <div key={label}>
-              <label style={{
-                display: "block", fontSize: "0.65rem",
-                letterSpacing: "0.18em", textTransform: "uppercase",
-                color: "#8a8580", marginBottom: "0.4rem",
-              }}>{label}</label>
-              <input
-                type="text"
-                placeholder={`Enter ${label.toLowerCase()}...`}
-                style={{
-                  width: "100%",
-                  background: "#1a1a25",
-                  border: "1px solid rgba(201,168,76,0.15)",
-                  borderRadius: 6,
-                  padding: "0.6rem 0.9rem",
-                  color: "#f0ece0",
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "0.88rem",
-                  outline: "none",
-                  transition: "border-color 0.2s",
-                }}
-                onFocus={e => e.target.style.borderColor = "rgba(201,168,76,0.5)"}
-                onBlur={e => e.target.style.borderColor = "rgba(201,168,76,0.15)"}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* submit */}
-        <button style={{
-          marginTop: "1.8rem", width: "100%",
-          padding: "0.75rem",
-          background: "linear-gradient(135deg,#c9a84c,#e8c97a)",
-          border: "none", borderRadius: 6,
-          color: "#0a0a0f",
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: "0.82rem", fontWeight: 500,
-          letterSpacing: "0.12em", textTransform: "uppercase",
-          cursor: "pointer",
-          boxShadow: "0 4px 20px rgba(201,168,76,0.35)",
-          transition: "all 0.3s",
-        }}
-          onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(201,168,76,0.5)"; }}
-          onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(201,168,76,0.35)"; }}
-        >
-          Submit Entry
-        </button>
-      </div>
-    </div>
-  );
-};
-
-/* ── CSV Upload Modal ── */
-const CsvModal = ({ onClose }) => {
-  const [dragging, setDragging] = useState(false);
-  const [file, setFile] = useState(null);
-  const inputRef = useRef();
-
-  const handleDrop = (e) => {
-    e.preventDefault(); setDragging(false);
-    const f = e.dataTransfer.files[0];
-    if (f) setFile(f);
-  };
-
-  return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 9998,
-      background: "rgba(0,0,0,0.75)",
-      backdropFilter: "blur(8px)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-    }} onClick={onClose}>
-      <div style={{
-        background: "#16161f",
-        border: "1px solid rgba(201,168,76,0.25)",
-        borderRadius: 12,
-        padding: "2rem 2.5rem",
-        width: "min(440px, 92vw)",
-        boxShadow: "0 32px 80px rgba(0,0,0,0.7), 0 0 40px rgba(201,168,76,0.08)",
-        position: "relative",
-      }} onClick={e => e.stopPropagation()}>
-
-        <div style={{
-          position: "absolute", top: 0, left: "10%", right: "10%", height: 1,
-          background: "linear-gradient(90deg,transparent,#c9a84c,transparent)",
-        }} />
-
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.6rem" }}>
-          <div>
             <div style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontSize: "1.4rem", fontWeight: 600,
-              letterSpacing: "0.08em", color: "#f0ece0", textTransform: "uppercase",
-            }}>Upload CSV</div>
-            <div style={{ fontSize: "0.65rem", letterSpacing: "0.2em", color: "#8a8580", textTransform: "uppercase", marginTop: 2 }}>
+              fontSize: "0.65rem", letterSpacing: "0.2em",
+              color: "#8a8580", textTransform: "uppercase", marginTop: 2,
+            }}>
               Drag & drop or browse
             </div>
           </div>
-          <button onClick={onClose} style={{
-            background: "rgba(255,255,255,0.05)", border: "1px solid rgba(201,168,76,0.2)",
-            borderRadius: 6, width: 32, height: 32,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#8a8580", cursor: "pointer", fontSize: "1rem",
-          }}><AiOutlineClose /></button>
+
+          <button
+            onClick={onClose}
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(201,168,76,0.2)",
+              borderRadius: 6, width: 32, height: 32,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#8a8580", cursor: "pointer", fontSize: "1rem",
+            }}
+          >
+            <AiOutlineClose />
+          </button>
         </div>
 
         {/* drop zone */}
         <div
-          onDragOver={e => { e.preventDefault(); setDragging(true); }}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
           onClick={() => inputRef.current?.click()}
@@ -185,16 +149,21 @@ const CsvModal = ({ onClose }) => {
             padding: "2.5rem 1rem",
             textAlign: "center",
             cursor: "pointer",
-            background: dragging ? "rgba(201,168,76,0.05)" : "rgba(255,255,255,0.02)",
+            background: dragging
+              ? "rgba(201,168,76,0.05)"
+              : "rgba(255,255,255,0.02)",
             transition: "all 0.25s",
           }}
         >
           <div style={{ fontSize: "2rem", color: "#c9a84c", marginBottom: "0.75rem" }}>
             <AiOutlineUpload />
           </div>
+
           {file ? (
             <div>
-              <div style={{ color: "#c9a84c", fontWeight: 500, fontSize: "0.9rem" }}>{file.name}</div>
+              <div style={{ color: "#c9a84c", fontWeight: 500, fontSize: "0.9rem" }}>
+                {file.name}
+              </div>
               <div style={{ color: "#8a8580", fontSize: "0.75rem", marginTop: 4 }}>
                 {(file.size / 1024).toFixed(1)} KB
               </div>
@@ -209,25 +178,223 @@ const CsvModal = ({ onClose }) => {
               </div>
             </>
           )}
-          <input ref={inputRef} type="file" accept=".csv" style={{ display: "none" }}
-            onChange={e => setFile(e.target.files[0])} />
+
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".csv"
+            style={{ display: "none" }}
+            onChange={(e) => setFile(e.target.files[0])}
+          />
         </div>
 
-        <button style={{
-          marginTop: "1.5rem", width: "100%", padding: "0.75rem",
-          background: file ? "linear-gradient(135deg,#c9a84c,#e8c97a)" : "rgba(255,255,255,0.05)",
-          border: file ? "none" : "1px solid rgba(201,168,76,0.2)",
-          borderRadius: 6,
-          color: file ? "#0a0a0f" : "#8a8580",
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: "0.82rem", fontWeight: 500,
-          letterSpacing: "0.12em", textTransform: "uppercase",
-          cursor: file ? "pointer" : "not-allowed",
-          transition: "all 0.3s",
-          boxShadow: file ? "0 4px 20px rgba(201,168,76,0.35)" : "none",
-        }}>
-          {file ? "Upload & Process" : "Select a file first"}
+        {/* upload button */}
+        <button
+          onClick={handleUpload}
+          disabled={!file || uploading}
+          style={{
+            marginTop: "1.5rem", width: "100%", padding: "0.75rem",
+            background: file
+              ? "linear-gradient(135deg,#c9a84c,#e8c97a)"
+              : "rgba(255,255,255,0.05)",
+            border: file ? "none" : "1px solid rgba(201,168,76,0.2)",
+            borderRadius: 6,
+            color: file ? "#0a0a0f" : "#8a8580",
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: "0.82rem", fontWeight: 500,
+            letterSpacing: "0.12em", textTransform: "uppercase",
+            cursor: file && !uploading ? "pointer" : "not-allowed",
+            transition: "all 0.3s",
+            boxShadow: file ? "0 4px 20px rgba(201,168,76,0.35)" : "none",
+          }}
+        >
+          {uploading ? "Uploading..." : file ? "Upload & Process" : "Select a file first"}
         </button>
+
+        {/* error */}
+        {error && (
+          <p style={{
+            color: "#ef4444", fontSize: "0.75rem",
+            marginTop: "0.5rem", textAlign: "center", marginBottom: 0,
+          }}>
+            {error}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════════
+   FILE SELECT MODAL  (See All)
+══════════════════════════════════════════ */
+const FileSelectModal = ({ onClose, onSelectFile }) => {
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(localStorage.getItem("file_id"));
+
+  useEffect(() => {
+    const fetchFiles = async () => {
+      const token = localStorage.getItem("token");
+      try {
+        const res = await fetch("http://127.0.0.1:8000/api/files/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setFiles(data.files || []);
+      } catch (err) {
+        console.error("Could not fetch files", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFiles();
+  }, []);
+
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0, zIndex: 9998,
+        background: "rgba(0,0,0,0.75)",
+        backdropFilter: "blur(8px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: "#16161f",
+          border: "1px solid rgba(201,168,76,0.25)",
+          borderRadius: 12,
+          padding: "2rem 2.5rem",
+          width: "min(500px, 92vw)",
+          maxHeight: "80vh",
+          overflowY: "auto",
+          boxShadow: "0 32px 80px rgba(0,0,0,0.7)",
+          position: "relative",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* gold top line */}
+        <div style={{
+          position: "absolute", top: 0, left: "10%", right: "10%", height: 1,
+          background: "linear-gradient(90deg,transparent,#c9a84c,transparent)",
+        }} />
+
+        {/* header */}
+        <div style={{
+          display: "flex", alignItems: "center",
+          justifyContent: "space-between", marginBottom: "1.6rem",
+        }}>
+          <div>
+            <div style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: "1.4rem", fontWeight: 600,
+              letterSpacing: "0.08em", color: "#f0ece0",
+              textTransform: "uppercase",
+            }}>
+              Your Files
+            </div>
+            <div style={{
+              fontSize: "0.65rem", letterSpacing: "0.2em",
+              color: "#8a8580", textTransform: "uppercase", marginTop: 2,
+            }}>
+              Select a file to query
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(201,168,76,0.2)",
+              borderRadius: 6, width: 32, height: 32,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#8a8580", cursor: "pointer", fontSize: "1rem",
+            }}
+          >
+            <AiOutlineClose />
+          </button>
+        </div>
+
+        {/* file list */}
+        {loading ? (
+          <div style={{ color: "#8a8580", textAlign: "center", padding: "2rem" }}>
+            Loading your files...
+          </div>
+        ) : files.length === 0 ? (
+          <div style={{ color: "#8a8580", textAlign: "center", padding: "2rem" }}>
+            No files uploaded yet.
+            <br />
+            <span style={{ fontSize: "0.75rem" }}>
+              Use New → Upload CSV to get started
+            </span>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            {files.map((file) => (
+              <div
+                key={file.id}
+                style={{
+                  display: "flex", alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "0.9rem 1rem",
+                  background:
+                    selectedId == file.id
+                      ? "rgba(201,168,76,0.1)"
+                      : "rgba(255,255,255,0.03)",
+                  border:
+                    selectedId == file.id
+                      ? "1px solid rgba(201,168,76,0.4)"
+                      : "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 8,
+                  transition: "all 0.2s",
+                }}
+              >
+                {/* file info */}
+                <div>
+                  <div style={{
+                    color: "#f0ece0", fontSize: "0.88rem",
+                    fontFamily: "'DM Sans', sans-serif", marginBottom: 2,
+                  }}>
+                    📄 {file.filename}
+                  </div>
+                  <div style={{
+                    color: "#8a8580", fontSize: "0.68rem", letterSpacing: "0.1em",
+                  }}>
+                    {file.uploaded_at}
+                  </div>
+                </div>
+
+                {/* select button */}
+                <button
+                  onClick={() => {
+                    localStorage.setItem("file_id", file.id);
+                    localStorage.setItem("active_filename", file.filename);
+                    setSelectedId(file.id);
+                    onSelectFile(file.id, file.filename);
+                    onClose();
+                  }}
+                  style={{
+                    padding: "0.4rem 0.9rem",
+                    background:
+                      selectedId == file.id
+                        ? "linear-gradient(135deg,#c9a84c,#e8c97a)"
+                        : "rgba(201,168,76,0.1)",
+                    border: "1px solid rgba(201,168,76,0.4)",
+                    borderRadius: 6,
+                    color: selectedId == file.id ? "#0a0a0f" : "#c9a84c",
+                    fontSize: "0.75rem", fontWeight: 500,
+                    cursor: "pointer", letterSpacing: "0.08em",
+                    whiteSpace: "nowrap", transition: "all 0.2s",
+                  }}
+                >
+                  {selectedId == file.id ? "✓ Active" : "Use This"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -236,31 +403,40 @@ const CsvModal = ({ onClose }) => {
 /* ══════════════════════════════════════════
    MAIN HEADER
 ══════════════════════════════════════════ */
-function Header({ isLoggedIn = true, activeView, onViewChange, username = "Dhruba" }) {
-  const [scrolled,     setScrolled]     = useState(false);
-  const [time,         setTime]         = useState(new Date());
-  const [newOpen,      setNewOpen]      = useState(false);
-  const [userOpen,     setUserOpen]     = useState(false);
-  const [showCsv,      setShowCsv]      = useState(false);
-  const [showManual,   setShowManual]   = useState(false);
-  const newRef  = useRef();
+function Header({ isLoggedIn, activeView, onViewChange, username, onLogout }) {
+  const navigate = useNavigate();
+
+  // UI state
+  const [scrolled, setScrolled] = useState(false);
+  const [time, setTime] = useState(new Date());
+  const [newOpen, setNewOpen] = useState(false);
+  const [userOpen, setUserOpen] = useState(false);
+
+  // Modal state
+  const [showCsv, setShowCsv] = useState(false);
+  // REMOVED: const [showManual, setShowManual] = useState(false);
+  const [showFileSelect, setShowFileSelect] = useState(false);
+
+  const newRef = useRef();
   const userRef = useRef();
 
+  // Scroll listener
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Clock
   useEffect(() => {
     const tick = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(tick);
   }, []);
 
-  /* close dropdowns on outside click */
+  // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e) => {
-      if (newRef.current  && !newRef.current.contains(e.target))  setNewOpen(false);
+      if (newRef.current && !newRef.current.contains(e.target)) setNewOpen(false);
       if (userRef.current && !userRef.current.contains(e.target)) setUserOpen(false);
     };
     document.addEventListener("mousedown", handler);
@@ -270,20 +446,18 @@ function Header({ isLoggedIn = true, activeView, onViewChange, username = "Dhrub
   const timeStr = time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const dateStr = time.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
 
-  /* nav items (shown when logged in) */
   const navItems = [
-    { key: "home",   label: "Home",    icon: <AiOutlineHome /> },
-    { key: "2d",     label: "2D View", icon: <AiOutlineBarChart /> },
-    { key: "3d",     label: "3D View", icon: <AiOutlineAppstore /> },
+    { key: "home", label: "Home", icon: <AiOutlineHome /> },
     { key: "seeall", label: "See All", icon: <AiOutlineUnorderedList /> },
   ];
 
   const navStyle = (key) => ({
     display: "flex", alignItems: "center", gap: "0.4rem",
-    padding: "0.45rem 0.9rem",
-    borderRadius: 6,
+    padding: "0.45rem 0.9rem", borderRadius: 6,
     background: activeView === key ? "rgba(201,168,76,0.12)" : "transparent",
-    border: activeView === key ? "1px solid rgba(201,168,76,0.3)" : "1px solid transparent",
+    border: activeView === key
+      ? "1px solid rgba(201,168,76,0.3)"
+      : "1px solid transparent",
     color: activeView === key ? "#c9a84c" : "#8a8580",
     fontFamily: "'DM Sans', sans-serif",
     fontSize: "0.78rem", fontWeight: 400,
@@ -294,27 +468,28 @@ function Header({ isLoggedIn = true, activeView, onViewChange, username = "Dhrub
   });
 
   const dropItem = (icon, label, onClick) => (
-    <button key={label} onClick={onClick} style={{
-      display: "flex", alignItems: "center", gap: "0.65rem",
-      width: "100%", padding: "0.65rem 1rem",
-      background: "transparent", border: "none",
-      color: "#f0ece0",
-      fontFamily: "'DM Sans', sans-serif",
-      fontSize: "0.82rem", letterSpacing: "0.06em",
-      cursor: "pointer", textAlign: "left",
-      borderRadius: 6,
-      transition: "background 0.2s",
-    }}
-      onMouseEnter={e => e.currentTarget.style.background = "rgba(201,168,76,0.08)"}
-      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+    <button
+      key={label}
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: "0.65rem",
+        width: "100%", padding: "0.65rem 1rem",
+        background: "transparent", border: "none",
+        color: "#f0ece0", fontFamily: "'DM Sans', sans-serif",
+        fontSize: "0.82rem", letterSpacing: "0.06em",
+        cursor: "pointer", textAlign: "left",
+        borderRadius: 6, transition: "background 0.2s",
+      }}
+      onMouseEnter={(e) =>
+        (e.currentTarget.style.background = "rgba(201,168,76,0.08)")
+      }
+      onMouseLeave={(e) =>
+        (e.currentTarget.style.background = "transparent")
+      }
     >
       <span style={{ color: "#c9a84c", fontSize: "1rem" }}>{icon}</span>
       {label}
     </button>
-  );
-
-  const dropDivider = () => (
-    <div style={{ height: 1, background: "rgba(201,168,76,0.1)", margin: "0.3rem 0" }} />
   );
 
   return (
@@ -332,8 +507,14 @@ function Header({ isLoggedIn = true, activeView, onViewChange, username = "Dhrub
         <div className="container-fluid px-4">
           <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
 
-            {/* ── Logo ── */}
-            <a href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "0.65rem", flexShrink: 0 }}>
+            {/* Logo */}
+            <a
+              href="/"
+              style={{
+                textDecoration: "none", display: "flex",
+                alignItems: "center", gap: "0.65rem", flexShrink: 0,
+              }}
+            >
               <div style={{
                 width: 34, height: 34, borderRadius: 7,
                 background: "linear-gradient(135deg,#c9a84c,#e8c97a)",
@@ -352,37 +533,63 @@ function Header({ isLoggedIn = true, activeView, onViewChange, username = "Dhrub
                 }}>
                   Vision<span style={{ color: "#c9a84c" }}>BI</span>
                 </div>
-                <div style={{ fontSize: "0.55rem", letterSpacing: "0.2em", color: "#8a8580", textTransform: "uppercase" }}>
+                <div style={{
+                  fontSize: "0.55rem", letterSpacing: "0.2em",
+                  color: "#8a8580", textTransform: "uppercase",
+                }}>
                   Analytics Platform
                 </div>
               </div>
             </a>
 
-            {/* ── Nav items (logged in only) ── */}
+            {/* Nav (logged in only) */}
             {isLoggedIn && (
-              <nav style={{ display: "flex", alignItems: "center", gap: "0.25rem", flex: 1 }}>
+              <nav style={{
+                display: "flex", alignItems: "center",
+                gap: "0.25rem", flex: 1,
+              }}>
+                {/* Home + See All buttons */}
                 {navItems.map(({ key, label, icon }) => (
-                  <button key={key}
+                  <button
+                    key={key}
                     style={navStyle(key)}
-                    onClick={() => onViewChange?.(key)}
-                    onMouseEnter={e => { if (activeView !== key) { e.currentTarget.style.color = "#f0ece0"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; } }}
-                    onMouseLeave={e => { if (activeView !== key) { e.currentTarget.style.color = "#8a8580"; e.currentTarget.style.background = "transparent"; } }}
+                    onClick={() => {
+                      if (key === "seeall") {
+                        setShowFileSelect(true);
+                      } else {
+                        onViewChange?.(key);
+                      }
+                    }}
+                    onMouseEnter={(e) => {
+                      if (activeView !== key) {
+                        e.currentTarget.style.color = "#f0ece0";
+                        e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (activeView !== key) {
+                        e.currentTarget.style.color = "#8a8580";
+                        e.currentTarget.style.background = "transparent";
+                      }
+                    }}
                   >
                     <span style={{ fontSize: "0.95rem" }}>{icon}</span>
                     {label}
                   </button>
                 ))}
 
-                {/* ── NEW dropdown ── */}
+                {/* New dropdown */}
                 <div ref={newRef} style={{ position: "relative" }}>
                   <button
                     style={{
                       ...navStyle("new"),
-                      background: newOpen ? "rgba(201,168,76,0.15)" : "rgba(201,168,76,0.08)",
+                      background: newOpen
+                        ? "rgba(201,168,76,0.15)"
+                        : "rgba(201,168,76,0.08)",
                       border: "1px solid rgba(201,168,76,0.3)",
                       color: "#c9a84c",
                     }}
-                    onClick={() => setNewOpen(o => !o)}
+                    onClick={() => setNewOpen((o) => !o)}
                   >
                     <span style={{ fontSize: "0.95rem" }}><AiOutlinePlus /></span>
                     New
@@ -394,58 +601,67 @@ function Header({ isLoggedIn = true, activeView, onViewChange, username = "Dhrub
                     }}>▼</span>
                   </button>
 
-                  {/* dropdown panel */}
                   {newOpen && (
                     <div style={{
                       position: "absolute", top: "calc(100% + 10px)", left: 0,
-                      minWidth: 210,
-                      background: "#16161f",
+                      minWidth: 210, background: "#16161f",
                       border: "1px solid rgba(201,168,76,0.2)",
-                      borderRadius: 10,
-                      padding: "0.5rem",
+                      borderRadius: 10, padding: "0.5rem",
                       boxShadow: "0 20px 60px rgba(0,0,0,0.7), 0 0 30px rgba(201,168,76,0.06)",
                       zIndex: 300,
                       animation: "dropIn 0.2s cubic-bezier(0.23,1,0.32,1)",
                     }}>
-                      {/* top gold accent */}
-                      <div style={{ height: 1, background: "linear-gradient(90deg,transparent,#c9a84c,transparent)", marginBottom: "0.4rem" }} />
-
-                      <div style={{ padding: "0.2rem 0.8rem 0.5rem", fontSize: "0.6rem", letterSpacing: "0.2em", color: "#8a8580", textTransform: "uppercase" }}>
+                      <div style={{
+                        height: 1,
+                        background: "linear-gradient(90deg,transparent,#c9a84c,transparent)",
+                        marginBottom: "0.4rem",
+                      }} />
+                      <div style={{
+                        padding: "0.2rem 0.8rem 0.5rem",
+                        fontSize: "0.6rem", letterSpacing: "0.2em",
+                        color: "#8a8580", textTransform: "uppercase",
+                      }}>
                         Upload Data
                       </div>
-
-                      {dropItem(<AiOutlineFileText />, "Upload CSV", () => { setShowCsv(true); setNewOpen(false); })}
-                      {dropItem(<AiOutlineEdit />, "Manual Entry", () => { setShowManual(true); setNewOpen(false); })}
-
-                      {dropDivider()}
-
-                      <div style={{ padding: "0.2rem 0.8rem 0.5rem", fontSize: "0.6rem", letterSpacing: "0.2em", color: "#8a8580", textTransform: "uppercase" }}>
-                        Create
-                      </div>
-                      {dropItem(<AiOutlineBarChart />, "New 2D Chart", () => { onViewChange?.("2d"); setNewOpen(false); })}
-                      {dropItem(<AiOutlineAppstore />, "New 3D View",  () => { onViewChange?.("3d"); setNewOpen(false); })}
+                      {/* REMOVED: Manual Entry option */}
+                      {dropItem(<AiOutlineFileText />, "Upload CSV", () => {
+                        setShowCsv(true);
+                        setNewOpen(false);
+                      })}
                     </div>
                   )}
                 </div>
               </nav>
             )}
 
-            {/* spacer */}
             <div style={{ flex: isLoggedIn ? 0 : 1 }} />
 
-            {/* ── Clock (center, non-logged guests see it) ── */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+            {/* Clock */}
+            <div style={{
+              display: "flex", flexDirection: "column",
+              alignItems: "center", flexShrink: 0,
+            }}>
               <span style={{
                 fontFamily: "'Cormorant Garamond', serif",
                 fontSize: "1.25rem", fontWeight: 300,
                 color: "#c9a84c", letterSpacing: "0.12em", lineHeight: 1.1,
-              }}>{timeStr}</span>
-              <span style={{ fontSize: "0.58rem", letterSpacing: "0.18em", color: "#8a8580", textTransform: "uppercase" }}>{dateStr}</span>
+              }}>
+                {timeStr}
+              </span>
+              <span style={{
+                fontSize: "0.58rem", letterSpacing: "0.18em",
+                color: "#8a8580", textTransform: "uppercase",
+              }}>
+                {dateStr}
+              </span>
             </div>
 
-            {/* ── Right side ── */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexShrink: 0 }}>
-              {/* live dot */}
+            {/* Right side */}
+            <div style={{
+              display: "flex", alignItems: "center",
+              gap: "0.6rem", flexShrink: 0,
+            }}>
+              {/* Live dot */}
               <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                 <span style={{
                   width: 6, height: 6, borderRadius: "50%",
@@ -454,68 +670,116 @@ function Header({ isLoggedIn = true, activeView, onViewChange, username = "Dhrub
                   display: "inline-block",
                   animation: "pulse-dot 2s infinite",
                 }} />
-                <span style={{ fontSize: "0.65rem", letterSpacing: "0.15em", color: "#8a8580", textTransform: "uppercase" }}>Live</span>
+                <span style={{
+                  fontSize: "0.65rem", letterSpacing: "0.15em",
+                  color: "#8a8580", textTransform: "uppercase",
+                }}>
+                  Live
+                </span>
               </div>
 
-              {isLoggedIn ? (
-                /* ── User avatar dropdown ── */
+              {/* User dropdown */}
+              {isLoggedIn && (
                 <div ref={userRef} style={{ position: "relative" }}>
                   <button
-                    onClick={() => setUserOpen(o => !o)}
+                    onClick={() => setUserOpen((o) => !o)}
                     style={{
                       display: "flex", alignItems: "center", gap: "0.5rem",
                       padding: "0.4rem 0.8rem 0.4rem 0.4rem",
                       background: "rgba(201,168,76,0.08)",
                       border: "1px solid rgba(201,168,76,0.2)",
-                      borderRadius: 999,
-                      cursor: "pointer",
+                      borderRadius: 999, cursor: "pointer",
                       transition: "all 0.25s",
                     }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(201,168,76,0.45)"}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(201,168,76,0.2)"}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.borderColor = "rgba(201,168,76,0.45)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.borderColor = "rgba(201,168,76,0.2)")
+                    }
                   >
                     <div style={{
                       width: 26, height: 26, borderRadius: "50%",
                       background: "linear-gradient(135deg,#c9a84c,#e8c97a)",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       color: "#0a0a0f", fontSize: "0.85rem",
-                    }}><AiOutlineUser /></div>
-                    <span style={{ fontSize: "0.78rem", color: "#f0ece0", fontFamily: "'DM Sans', sans-serif" }}>{username}</span>
-                    <span style={{ fontSize: "0.55rem", color: "#8a8580", transform: userOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }}>▼</span>
+                    }}>
+                      <AiOutlineUser />
+                    </div>
+                    <span style={{
+                      fontSize: "0.78rem", color: "#f0ece0",
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}>
+                      {username}
+                    </span>
+                    <span style={{
+                      fontSize: "0.55rem", color: "#8a8580",
+                      transform: userOpen ? "rotate(180deg)" : "rotate(0)",
+                      transition: "transform 0.2s",
+                    }}>▼</span>
                   </button>
 
                   {userOpen && (
                     <div style={{
                       position: "absolute", top: "calc(100% + 10px)", right: 0,
-                      minWidth: 170,
-                      background: "#16161f",
+                      minWidth: 170, background: "#16161f",
                       border: "1px solid rgba(201,168,76,0.2)",
-                      borderRadius: 10,
-                      padding: "0.5rem",
+                      borderRadius: 10, padding: "0.5rem",
                       boxShadow: "0 20px 60px rgba(0,0,0,0.7)",
                       zIndex: 300,
                       animation: "dropIn 0.2s cubic-bezier(0.23,1,0.32,1)",
                     }}>
-                      <div style={{ height: 1, background: "linear-gradient(90deg,transparent,#c9a84c,transparent)", marginBottom: "0.4rem" }} />
+                      <div style={{
+                        height: 1,
+                        background: "linear-gradient(90deg,transparent,#c9a84c,transparent)",
+                        marginBottom: "0.4rem",
+                      }} />
                       {dropItem(<AiOutlineUser />, "Profile", () => setUserOpen(false))}
-                      {dropDivider()}
-                      {dropItem(<AiOutlineLogout />, "Logout", () => setUserOpen(false))}
+                      <div style={{
+                        height: 1, background: "rgba(201,168,76,0.1)", margin: "0.3rem 0",
+                      }} />
+                      {dropItem(<AiOutlineLogout />, "Logout", () => {
+                        localStorage.removeItem("token");
+                        localStorage.removeItem("refresh");
+                        localStorage.removeItem("username");
+                        localStorage.removeItem("file_id");
+                        localStorage.removeItem("active_filename");
+                        onLogout?.();
+                        navigate("/login");
+                      })}
                     </div>
                   )}
                 </div>
-              ) : (
-                <>
-                  
-                </>
               )}
             </div>
+
           </div>
         </div>
       </header>
 
-      {/* ── Modals ── */}
-      {showCsv    && <CsvModal    onClose={() => setShowCsv(false)} />}
-      {showManual && <ManualForm  onClose={() => setShowManual(false)} />}
+      {/* Modals */}
+      {showCsv && (
+        <CsvModal
+          onClose={() => setShowCsv(false)}
+          onUploadSuccess={(fileId, fileName) => {
+            localStorage.setItem("file_id", fileId);
+            localStorage.setItem("active_filename", fileName);
+            setShowCsv(false);
+            alert(`✅ ${fileName} uploaded successfully!`);
+          }}
+        />
+      )}
+
+      {/* REMOVED: ManualForm modal */}
+
+      {showFileSelect && (
+        <FileSelectModal
+          onClose={() => setShowFileSelect(false)}
+          onSelectFile={(fileId, filename) => {
+            console.log("Active file changed to:", filename);
+          }}
+        />
+      )}
 
       <style>{`
         @keyframes pulse-dot {
